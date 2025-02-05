@@ -1,93 +1,110 @@
 package com.kaerusworld.newsapp.presentation.viewmodel
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.kaerusworld.newsapp.data.model.NewsArticle
+import com.kaerusworld.newsapp.domain.model.NewsArticle
 import com.kaerusworld.newsapp.data.model.Source
-import com.kaerusworld.newsapp.domain.repository.NewsRepository
-import com.kaerusworld.newsapp.domain.usecase.FetchNewsUseCase
+import com.kaerusworld.newsapp.domain.usecase.FetchArticleUseCase
+import com.kaerusworld.newsapp.domain.usecase.GetArticleByIdUseCase
+import com.kaerusworld.newsapp.domain.usecase.GetOfflineNewsUseCase
+import com.kaerusworld.newsapp.presentation.ui.state.UiState
+import io.mockk.MockKAnnotations
 import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
+import io.mockk.impl.annotations.MockK
 import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.assertNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewsViewModelTest {
-    // Mocks
-    private lateinit var fetchNewsUseCase: FetchNewsUseCase
-    private lateinit var newsRepository: NewsRepository
-    private lateinit var viewModel: NewsViewModel
 
-    @get:Rule
-    val instantTaskExecutorRule = InstantTaskExecutorRule()
+    @MockK private lateinit var fetchArticleUseCase: FetchArticleUseCase
+    @MockK private lateinit var getOfflineNewsUseCase: GetOfflineNewsUseCase
+    @MockK private lateinit var getArticleByIdUseCase: GetArticleByIdUseCase
+    private lateinit var viewModel: NewsViewModel
 
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(testDispatcher) // Set main dispatcher for testing
-        fetchNewsUseCase = mockk()
-        newsRepository = mockk()
-        viewModel = NewsViewModel(fetchNewsUseCase, newsRepository)
+        MockKAnnotations.init(this)
+        Dispatchers.setMain(testDispatcher)
+        // Initialize the viewModel
+        viewModel = NewsViewModel(
+            fetchArticleUseCase,
+            getOfflineNewsUseCase,
+            getArticleByIdUseCase
+        )
     }
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain() // Reset main dispatcher after tests
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun `fetchNews should update newsArticles on success`() = runTest {
+    fun `fetchNews should update newsState on success`() = runTest {
+        coEvery { fetchArticleUseCase("test_api_key") } returns getMockNewsArticles()
 
-        coEvery { fetchNewsUseCase("test_api_key") } returns getMockNewsArticles()
-
-        // When
-        viewModel.fetchNews("test_api_key")
-        testDispatcher.scheduler.advanceUntilIdle() // Wait for coroutines
-
-        // Then
-        assertEquals(getMockNewsArticles(), viewModel.newsArticles.value)
-        assertNull(viewModel.errorState.value) // No errors should be present
-    }
-
-    @Test
-    fun `fetchNews should set errorState on failure`() = runTest {
-        // Given
-        val exception = RuntimeException("Network error")
-        coEvery { fetchNewsUseCase("test_api_key") } throws exception
-
-        // When
         viewModel.fetchNews("test_api_key")
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Then
-        assertEquals("Failed to fetch news: Network error", viewModel.errorState.value)
-        // assertEquals(emptyList(), viewModel.newsArticles.value) // News list should remain empty
+        val state = viewModel.newsState.first()
+        assert(state is UiState.Success)
+        assertEquals(getMockNewsArticles(), (state as UiState.Success).data)    }
+
+    @Test
+    fun `fetchNews should set error state on failure`() = runTest {
+        val exception = RuntimeException("Network error")
+        coEvery { fetchArticleUseCase("test_api_key") } throws exception
+
+        viewModel.fetchNews("test_api_key")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.newsState.first()
+        assert(state is UiState.Error)
+        assertEquals("Failed to fetch news: Network error", (state as UiState.Error).message)
     }
 
     @Test
-    fun `loadOfflineNews should update newsArticles from repository`() = runTest {
-        // Given
+    fun `loadOfflineNews should update newsState with offline news`() = runTest {
+        coEvery { getOfflineNewsUseCase() } returns flowOf(getMockNewsArticles())
 
-        every { newsRepository.getOfflineNews() } returns flowOf(getMockNewsArticles())
-
-        // When
         viewModel.loadOfflineNews()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Then
-        assertEquals(getMockNewsArticles(), viewModel.newsArticles.value)
+        val state = viewModel.newsState.first()
+        assert(state is UiState.Success)
+        assertEquals(getMockNewsArticles(), (state as UiState.Success).data)
+    }
+
+    @Test
+    fun `loadArticleById should update uiState with the correct article`() = runTest {
+        val article = getMockNewsArticles().first()
+        coEvery { getArticleByIdUseCase(article.id) } returns article
+
+        viewModel.loadArticleById(article.id)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.first()
+        assert(state is UiState.Success)
+        assertEquals(article, (state as UiState.Success).data)
+    }
+
+    @Test
+    fun `loadArticleById should return error if article not found`() = runTest {
+        coEvery { getArticleByIdUseCase(999) } returns null
+
+        viewModel.loadArticleById(999)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.first()
+        assert(state is UiState.Error)
+        assertEquals("Article not found", (state as UiState.Error).message)
     }
 }
 

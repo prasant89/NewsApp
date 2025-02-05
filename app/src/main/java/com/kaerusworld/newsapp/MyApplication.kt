@@ -10,6 +10,5 @@ class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         Log.d("NewsDatabase", "Database is being initialized")
-        NewsDatabase.getDatabase(this)
     }
 }

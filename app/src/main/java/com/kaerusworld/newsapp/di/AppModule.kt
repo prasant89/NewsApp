@@ -6,7 +6,10 @@ import com.kaerusworld.newsapp.data.db.NewsDao
 import com.kaerusworld.newsapp.data.network.NewsApiService
 import com.kaerusworld.newsapp.data.repository.NewsRepositoryImpl
 import com.kaerusworld.newsapp.domain.repository.NewsRepository
-import com.kaerusworld.newsapp.utils.Constants.BASE_URL
+import com.kaerusworld.newsapp.domain.usecase.FetchArticleUseCase
+import com.kaerusworld.newsapp.domain.usecase.GetOfflineNewsUseCase
+import com.kaerusworld.newsapp.common.Constants.BASE_URL
+import com.kaerusworld.newsapp.common.NetworkUtils
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,20 +33,24 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideNetworkUtils(connectivityManager: ConnectivityManager): NetworkUtils {
+        return NetworkUtils(connectivityManager)
+    }
+
+    @Provides
+    @Singleton
     fun provideRetrofit(): Retrofit {
-        // Create the logging interceptor to log network requests and responses
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY  // Log request/response body
+            level = HttpLoggingInterceptor.Level.BODY
         }
 
-        // Create an OkHttpClient with the logging interceptor
         val client = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .build()
 
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(client)  // Attach OkHttp client to Retrofit
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
@@ -56,7 +63,17 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNewsRepository(apiService: NewsApiService, newsDao: NewsDao, connectivityManager: ConnectivityManager): NewsRepository {
-        return NewsRepositoryImpl(apiService, newsDao, connectivityManager)
+    fun provideNewsRepository(apiService: NewsApiService, newsDao: NewsDao, networkUtils: NetworkUtils): NewsRepository {
+        return NewsRepositoryImpl(apiService, newsDao, networkUtils)
+    }
+
+    @Provides
+    fun provideFetchNewsUseCase(newsRepository: NewsRepository): FetchArticleUseCase {
+        return FetchArticleUseCase(newsRepository)
+    }
+
+    @Provides
+    fun provideGetOfflineNewsUseCase(newsRepository: NewsRepository): GetOfflineNewsUseCase {
+        return GetOfflineNewsUseCase(newsRepository)
     }
 }

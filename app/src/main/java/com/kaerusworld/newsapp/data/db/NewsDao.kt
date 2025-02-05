@@ -4,7 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.kaerusworld.newsapp.data.model.NewsArticle
+import com.kaerusworld.newsapp.domain.model.NewsArticle
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -14,4 +14,7 @@ interface NewsDao {
 
     @Query("SELECT * FROM news_articles")
     fun getArticles(): Flow<List<NewsArticle>>
+
+    @Query("SELECT * FROM news_articles WHERE id = :articleId")
+    fun getArticleById(articleId: Int): NewsArticle?
 }

@@ -1,4 +1,4 @@
-package com.kaerusworld.newsapp.ui.theme
+package com.kaerusworld.newsapp.presentation.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

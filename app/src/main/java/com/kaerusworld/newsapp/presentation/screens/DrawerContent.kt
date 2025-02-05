@@ -1,5 +1,7 @@
 package com.kaerusworld.newsapp.presentation.screens
 
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.Composable
@@ -18,7 +20,7 @@ import kotlinx.coroutines.launch
 fun DrawerContent(navController: NavController, onClose: suspend () -> Unit) {
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination?.route
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope() // For calling suspend functions
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -28,18 +30,22 @@ fun DrawerContent(navController: NavController, onClose: suspend () -> Unit) {
         Text("Menu", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Example menu items
         Button(onClick = {
             if (currentDestination != "newsList") {
-                navController.navigate("newsList") // Navigate to news_list
+                navController.navigate("newsList")
             } else {
-                // Show toast if already on the same screen
-                Toast.makeText(context, "Already on News List", Toast.LENGTH_SHORT).show()
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(context, "Already on News List", Toast.LENGTH_SHORT).show()
+                }
             }
-
-            // Properly launch suspend function
             coroutineScope.launch {
-                onClose()
+                try {
+                    onClose()
+                } catch (e: Exception) {
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(context, "Error closing drawer: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }) {
             Text("News List")
