@@ -5,4 +5,7 @@ sealed class NavigationRoutes(val route: String) {
     object NewsDetails : NavigationRoutes("newsDetails/{articleId}") {
         fun createRoute(articleId: Int) = "newsDetails/$articleId"
     }
+    object LikeComment : NavigationRoutes("likeComment/{articleId}") {
+        fun createRoute(articleId: Int) = "likeComment/$articleId"
+    }
 }

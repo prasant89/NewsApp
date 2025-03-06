@@ -6,6 +6,7 @@ import com.kaerusworld.newsapp.domain.model.NewsArticle
 import com.kaerusworld.newsapp.data.network.NewsApiService
 import com.kaerusworld.newsapp.domain.repository.NewsRepository
 import com.kaerusworld.newsapp.common.NetworkUtils
+import com.kaerusworld.newsapp.data.network.ArticleInfoApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -18,7 +19,8 @@ import javax.inject.Singleton
 class NewsRepositoryImpl @Inject constructor(
     private val apiService: NewsApiService,
     private val newsDao: NewsDao,
-    private val networkUtils: NetworkUtils
+    private val networkUtils: NetworkUtils,
+    private val apiArticleInfo: ArticleInfoApi
 ) : NewsRepository {
 
     override suspend fun fetchNews(apiKey: String): Flow<List<NewsArticle>> = flow {
@@ -47,6 +49,28 @@ class NewsRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             newsDao.getArticleById(articleId)
         }
+    }
+
+    override suspend fun getLikes(articleUrl: String): Int {
+        return try {
+            apiArticleInfo.getLikes(articleUrl.toArticleId()).likes
+        }catch (e: Exception) {
+            Log.e("NewsRepository", "Failed to fetch comments: ${e.message}")
+            150 // Return mock data
+        }
+    }
+
+    override suspend fun getComments(articleUrl: String): Int {
+        return try {
+            apiArticleInfo.getComments(articleUrl.toArticleId()).comments
+        }catch (e: Exception) {
+            Log.e("NewsRepository", "Failed to fetch comments: ${e.message}")
+            50 // Return mock data
+        }
+    }
+
+    private fun String.toArticleId(): String {
+        return this.removePrefix("https://").replace("/", "-")
     }
 }
 

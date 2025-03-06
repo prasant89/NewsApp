@@ -6,6 +6,7 @@ import com.kaerusworld.newsapp.domain.model.NewsArticle
 import com.kaerusworld.newsapp.data.model.Source
 import com.kaerusworld.newsapp.data.network.NewsApiService
 import com.kaerusworld.newsapp.common.NetworkUtils
+import com.kaerusworld.newsapp.data.network.ArticleInfoApi
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,6 +25,9 @@ class NewsRepositoryImplTest {
     @MockK
     private lateinit var mockApiService: NewsApiService
 
+    @MockK
+    private lateinit var mockArticleInfoApi: ArticleInfoApi
+
     @MockK(relaxed = true)
     private lateinit var mockNewsDao: NewsDao
 
@@ -33,7 +37,7 @@ class NewsRepositoryImplTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        newsRepository = NewsRepositoryImpl(mockApiService, mockNewsDao, mockNetworkUtils)
+        newsRepository = NewsRepositoryImpl(mockApiService, mockNewsDao, mockNetworkUtils,mockArticleInfoApi)
     }
 
     @Test

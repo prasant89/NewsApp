@@ -17,7 +17,8 @@ import com.kaerusworld.newsapp.presentation.ui.state.UiState
 fun NewsDetailsScreen(
     articleId: Int,
     viewModel: NewsViewModel,
-    navController: NavController
+    navController: NavController,
+    onLikeCommentClick: () -> Unit
 ) {
     LaunchedEffect(articleId) {
         viewModel.loadArticleById(articleId)
@@ -40,7 +41,7 @@ fun NewsDetailsScreen(
         ) {
             when (uiState) {
                 is UiState.Loading -> CircularProgressIndicator()
-                is UiState.Success -> NewsDetailsContent(uiState.data)
+                is UiState.Success -> NewsDetailsContent(uiState.data, onLikeCommentClick = onLikeCommentClick)
                 is UiState.Error -> Text(uiState.message, color = MaterialTheme.colorScheme.error)
                 UiState.Idle -> Unit
             }
